@@ -1,6 +1,6 @@
 [package]
 name = "commando"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/DumbMahreeo/commando"
@@ -9,6 +9,7 @@ repository = "https://github.com/DumbMahreeo/commando"
 
 [dependencies]
 byteorder = "1.4.3"
-#compress-tools = "0.12.3"
+compress-tools = "0.12.3"
 lazy-regex = "2.3.0"
 reqwest = {version = "0.11.11", features = ["blocking"]}
+tar = "0.4.38"

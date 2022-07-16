@@ -1,4 +1,5 @@
-use std::{process::{Command, exit}, thread::{self, spawn}, io::{Read, Write}, fs::File, path::PathBuf, str::FromStr};
+//@todo remove unused imports
+use std::{process::{Command, exit}, thread::{self, spawn}, io::{Read, Write, ErrorKind}, fs::File, path::PathBuf, str::FromStr, error::Error};
 
 use lazy_regex::Regex;
 use reqwest::Url;
@@ -36,7 +37,9 @@ pub fn parse_pacman_conf() -> Vec<(String, Vec<String>)> {
     }
 }
 
-pub fn download_pacman_db(repos: Vec<(String, Vec<String>)>) -> Vec<(String, Vec<u8>)> {
+/// Returns a vector of vectors of raw database data.
+/// `Vec<Vec<u8>> = Vec<AlpmFileDatabase>`
+pub fn download_pacman_db(repos: Vec<(String, Vec<String>)>) -> Vec<Vec<u8>> {
     let mut handles = Vec::with_capacity(repos.len());
     for repo in repos {
         handles.push(spawn(move || {
@@ -47,10 +50,25 @@ pub fn download_pacman_db(repos: Vec<(String, Vec<String>)>) -> Vec<(String, Vec
                 name.push_str(".files");
                 mirror = mirror.join(&name).unwrap();
 
-                if let Ok(mut response) = reqwest::blocking::get(mirror) {
+                if let Ok(response) = reqwest::blocking::get(mirror) {
                     let mut buf = Vec::new();
-                    response.read_to_end(&mut buf).unwrap();
-                    return (name, buf);
+                    let mut response = match response.error_for_status() {
+                        Ok(response) => response,
+                        Err(e) if e.is_timeout() => {
+                            eprintln!("[WARNING]: mirror timed out.\nTrying next mirror");
+                            continue;
+                        },
+                        Err(e) => {
+                            eprintln!("[WARNING]: error from mirror.\nTrying next mirror.\nError details: {e}");
+                            continue;
+                        }
+                    };
+
+                    if let Err(e) = response.read_to_end(&mut buf) {
+                        eprintln!("[WARNING]: couldn't read response data into buffer.\nTrying next mirror.\nError details: {e}");
+                        continue
+                    }
+                    return buf;
                 };
             }
             eprintln!("[FATAL]: no working mirror found for repo '{}'.\nPerhaps check your internet connection and DNS resolver", repo.0);
@@ -60,10 +78,14 @@ pub fn download_pacman_db(repos: Vec<(String, Vec<String>)>) -> Vec<(String, Vec
 
     let mut data = Vec::with_capacity(handles.len());
     for handle in handles {
-        data.push(handle.join().unwrap());
+        data.push(match handle.join() {
+            Ok(v) => v,
+            Err(_) => {
+                eprintln!("[FATAL]: thread errored");
+                exit(1);
+            }
+        });
     }
 
     data
-
-    // todo: proper error handling
 }

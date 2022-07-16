@@ -1,9 +1,10 @@
+//@todo remove unused imports
 use std::{fs::File, io::{Write, Cursor, Read, Seek, SeekFrom, BufReader, BufRead, Stdout, stdout}, path::Path, process::exit, collections::HashMap};
 
 use byteorder::{ByteOrder, ReadBytesExt};
 
 const MAGIC: [u8; 4] = [0x7F, 0x43, 0x44, 0x42];
-const CDB_VERSION: u32 = 1;
+const CDB_VERSION: u32 = 0;
 
 macro_rules! write_unwrap {
     ($($write:expr),+) => {
@@ -17,10 +18,8 @@ macro_rules! write_unwrap {
 }
 
 pub fn create_cdb<P: AsRef<Path>>(data: HashMap<String, Vec<String>>, path: P) {
-    let mut data: Vec<(String, Vec<String>)> = data.into_iter().collect();
-    data.sort_unstable_by_key(|(k, _)| {
-        k.clone()
-    });
+    let mut data: Vec<(&String, &Vec<String>)> = data.iter().collect();
+    data.sort_unstable_by_key(|(k, _)| k.clone());
 
     let path = path.as_ref();
     let mut file = File::create(path).unwrap_or_else(|e| {
@@ -57,6 +56,8 @@ pub fn create_cdb<P: AsRef<Path>>(data: HashMap<String, Vec<String>>, path: P) {
     }
 }
 
+// @todo add stop in search when command hasn't been found
+// @todo implement alphabetic stop
 pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(command: S, path: P) {
     let command = command.as_ref();
 
