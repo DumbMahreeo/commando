@@ -1,5 +1,4 @@
-//@todo remove unused imports
-use std::{process::{Command, exit}, thread::{self, spawn}, io::{Read, Write, ErrorKind}, fs::File, path::PathBuf, str::FromStr, error::Error};
+use std::{process::{Command, exit}, thread::spawn, io::Read, str::FromStr};
 
 use lazy_regex::Regex;
 use reqwest::Url;
@@ -8,7 +7,7 @@ pub fn parse_pacman_conf() -> Vec<(String, Vec<String>)> {
     match Command::new("pacman-conf").output() {
         Ok(output) => {
             let output = String::from_utf8(output.stdout).unwrap();
-            let mut output = output.split("\n[").into_iter();
+            let mut output = output.split("\n[");
 
             output.next();
             let name_re = Regex::new(r"(.*)]").unwrap();
@@ -27,7 +26,7 @@ pub fn parse_pacman_conf() -> Vec<(String, Vec<String>)> {
                 data.push((name.to_string(), mirrors));
             }
 
-            return data;
+            data
         },
 
         Err(e) => {

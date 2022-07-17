@@ -1,17 +1,13 @@
-// @todo remove unused imports
 use std::{
     collections::HashMap,
-    fs::{create_dir_all, read_dir, File},
-    io::{stderr, BufRead, BufReader, Cursor, Read, Write},
-    path::Path,
-    process::{exit, Command, Stdio},
+    io::Cursor,
+    process::exit,
     sync::{Arc, Mutex},
     thread,
 };
 
-use compress_tools::{uncompress_data, ArchiveContents, ArchiveIterator};
+use compress_tools::{ArchiveContents, ArchiveIterator};
 use lazy_regex::regex;
-use tar::Archive;
 
 /// Extracts libalpm file database into Vec<(desc: String, files: String)>
 pub fn extract_alpm_db(data: Vec<Vec<u8>>) -> Vec<(String, String)> {
@@ -85,7 +81,6 @@ pub fn extract_alpm_db(data: Vec<Vec<u8>>) -> Vec<(String, String)> {
 }
 
 fn read_package_name<S: AsRef<str>>(desc: S) -> String {
-    let oldstr = desc.as_ref().to_string();
     let mut desc = desc.as_ref().split('\n');
 
     while let Some(line) = desc.next() {
@@ -111,11 +106,10 @@ fn read_package_bins<S: AsRef<str>>(files: S) -> Vec<String> {
 
     let re = regex!(r"/bin/([^\s/.]+)");
 
-    let mut buf = String::new();
     let mut commands = Vec::new();
     for caps in re.captures_iter(files) {
         let bin_name = (&caps[1]).to_string();
-        if !buf.contains("node_modules") && !commands.contains(&bin_name) {
+        if !bin_name.contains("node_modules") && !commands.contains(&bin_name) {
             commands.push(bin_name);
         }
     }

@@ -1,21 +1,21 @@
 # Commando Database (CDB) Specification
 
-# Version 0
+# Version 1
 
-Note: version 0 is *the* unstable version.
+Note: version 0 is *the* unstable version, and it gets used for every unstable/development version.
 
 ## Types
 
 Values starting with `0x` are to be read as a hexadecimal number.
 
-| Type        | Description                                                                                                                  |
-|-------------|------------------------------------------------------------------------------------------------------------------------------|
-| Magic       | The magic number, a sequence of bytes to recognize the format. Currently corresponds to: \[`0x7F`, `0x43`, `0x44`, `0x42`\]. |
-| Byte        | An unsigned 8 bit integer.                                                                                                   |
-| UInt        | An unsigned, little endian, 32 bit integer.                                                                                  |
-| Newline     | A new line `Byte` with value of `0xA`.                                                                                       |
-| ETX         | An end of text `Byte` with value of `0x3`.                                                                                   |
-| String(len) | A sequence of bytes of maximum length defined by `len`, representing a UTF-8 string.                                         |
+| Type        | Description                                                                                                                                                  |
+|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Magic       | The magic number, a sequence of bytes to recognize the format. Currently corresponds to: \[`0x7F`, `0x43`, `0x4F`, `0x4D`, `0x4D`, `0x44`, `0x42`, `0x7F`\]. |
+| Byte        | An unsigned 8 bit integer.                                                                                                                                   |
+| UInt        | An unsigned, little endian, 32 bit integer.                                                                                                                  |
+| Newline     | A new line `Byte` with value of `0xA`.                                                                                                                       |
+| ETX         | An end of text `Byte` with value of `0x3`.                                                                                                                   |
+| String(len) | A sequence of bytes of maximum length defined by `len`, representing a UTF-8 string.                                                                         |
 
 ## Format
 
@@ -36,3 +36,5 @@ Repeatable fields always follow the same order.
 
 The structure of the database represents a *1:N* relationship between a
 single command and many packages.
+
+Commands are ordered by their length.

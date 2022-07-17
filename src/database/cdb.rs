@@ -1,10 +1,9 @@
-//@todo remove unused imports
-use std::{fs::File, io::{Write, Cursor, Read, Seek, SeekFrom, BufReader, BufRead, Stdout, stdout}, path::Path, process::exit, collections::HashMap};
+use std::{fs::File, io::{Write, Read, BufReader, BufRead, stdout}, path::Path, process::exit, collections::HashMap};
 
-use byteorder::{ByteOrder, ReadBytesExt};
+use byteorder::ReadBytesExt;
 
-const MAGIC: [u8; 4] = [0x7F, 0x43, 0x44, 0x42];
-const CDB_VERSION: u32 = 0;
+const MAGIC: [u8; 8] = [0x7F, 0x43, 0x4F, 0x4D, 0x4D, 0x44, 0x42, 0x7F];
+const CDB_VERSION: u32 = 1;
 
 macro_rules! write_unwrap {
     ($($write:expr),+) => {
@@ -17,9 +16,15 @@ macro_rules! write_unwrap {
     };
 }
 
-pub fn create_cdb<P: AsRef<Path>>(data: HashMap<String, Vec<String>>, path: P) {
-    let mut data: Vec<(&String, &Vec<String>)> = data.iter().collect();
-    data.sort_unstable_by_key(|(k, _)| k.clone());
+pub fn create_cdb<P: AsRef<Path>>(mut map_data: HashMap<String, Vec<String>>, path: P) {
+    let mut data = Vec::with_capacity(map_data.len());
+
+    for (command, bins) in map_data.iter_mut() {
+        bins.sort_unstable();
+        data.push((command, bins));
+    }
+
+    data.sort_unstable_by_key(|(k, _)| k.len());
 
     let path = path.as_ref();
     let mut file = File::create(path).unwrap_or_else(|e| {
@@ -36,7 +41,7 @@ pub fn create_cdb<P: AsRef<Path>>(data: HashMap<String, Vec<String>>, path: P) {
     for (command, packages) in data {
         write_unwrap!(
             file.write_all(&[command.len().clamp(0, u8::MAX as usize) as u8]), // Write command_length
-            file.write_all(&command.get(..255).unwrap_or(&command).as_bytes()) // Write command_name
+            file.write_all(command.get(..255).unwrap_or(command).as_bytes()) // Write command_name
         );
 
         let mut package = packages.join("\n");
@@ -56,8 +61,6 @@ pub fn create_cdb<P: AsRef<Path>>(data: HashMap<String, Vec<String>>, path: P) {
     }
 }
 
-// @todo add stop in search when command hasn't been found
-// @todo implement alphabetic stop
 pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(command: S, path: P) {
     let command = command.as_ref();
 
@@ -92,7 +95,7 @@ pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(command: S, path: P) {
         exit(1);
     }));
 
-    let mut magic_buf = [0u8,0,0,0];
+    let mut magic_buf = [0u8,0,0,0,0,0,0,0];
     read_unwrap!(file.read_exact(&mut magic_buf), "reading magic number");
     if magic_buf != MAGIC {
         eprintln!("[FATAL]: unrecognized file format (wrong magic number). Expected CDB file.");
@@ -113,7 +116,7 @@ pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(command: S, path: P) {
     }
 
     #[cfg(debug_assertions)]
-    let mut current_address: u32 = 8;
+    let mut current_address: u32 = 12;
 
     macro_rules! increase_address {
         () => {
@@ -134,10 +137,14 @@ pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(command: S, path: P) {
     }
 
     loop {
-        let command_length = read_unwrap!(file.read_u8(), "reading command length");
+        let command_length = match file.read_u8() {
+            Ok(l) => l,
+            _ => {
+                println!("Command `{}` not found in commando database", command);
+                exit(127);
+            },
+        };
 
-        #[cfg(debug_assertions)]
-        println!("Command length: {command_length}");
         increase_address!();
 
         macro_rules! skip_package {
@@ -150,15 +157,17 @@ pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(command: S, path: P) {
 
                 let package_length = u32::from_le_bytes(package_length);
 
-                #[cfg(debug_assertions)]
-                println!("package_length: {package_length}");
-
                 file.seek_relative((package_length as i64) + 1).unwrap();
 
                 increase_address!(package_length+1);
 
 
             };
+        }
+
+        if command_length > command.len() as u8 {
+            println!("Command `{}` not found in commando database", command);
+            exit(127);
         }
 
         if command_length != command.len() as u8 {
@@ -172,16 +181,17 @@ pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(command: S, path: P) {
         }
 
         let mut command_name = Vec::with_capacity(command.len());
+        #[allow(clippy::uninit_vec)]
         unsafe { command_name.set_len(command.len()) }
 
         #[cfg(debug_assertions)]
-        println!("Reading command name at address: {current_address:#X}");
+        eprintln!("Reading command name at address: {current_address:#X}");
 
-        read_unwrap!(file.read_exact(&mut command_name));
+        read_unwrap!(file.read_exact(&mut command_name), "reading command name");
         let command_name = String::from_utf8(command_name).unwrap();
 
         #[cfg(debug_assertions)]
-        println!("Command name: '{command_name}'");
+        eprintln!("Command name: '{command_name}'");
 
         if command_name != command {
             skip_package!();
@@ -190,6 +200,7 @@ pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(command: S, path: P) {
         }
 
         #[cfg(debug_assertions)] {
+            eprintln!("Command found");
             let mut package_length = [0u8,0,0,0];
             read_unwrap!(file.read_exact(&mut package_length), "reading package length for command");
             let package_length = u32::from_le_bytes(package_length);
@@ -204,17 +215,11 @@ pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(command: S, path: P) {
         let mut packages = Vec::with_capacity(20);
 
         let mut stdout = stdout();
-        read_unwrap!(file.read_until(0x03, &mut packages));
+        read_unwrap!(file.read_until(0x03, &mut packages), "reading package_name(s)");
 
         stdout.write_all(&packages).unwrap();
 
         stdout.flush().unwrap();
-        drop(stdout);
-
-        #[cfg(debug_assertions)]
-        println!("Reading package_name(s) at address: {current_address:#X}");
-
-        increase_address!(4);
 
         break;
     }
