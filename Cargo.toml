@@ -1,10 +1,10 @@
 [package]
 name = "arch-commando"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/DumbMahreeo/commando"
-description = "A fast, locate-like utility to search for commands on Arch Linux repos"
+description = "A fast, locate-like utility to search for commands in Arch Linux repos"
 
 [dependencies]
 byteorder = "1.4.3"

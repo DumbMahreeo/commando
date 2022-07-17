@@ -78,12 +78,15 @@ fn main() {
         exit(0);
     }
 
-    let command = args.command.unwrap();
-
-    if command.len() <= 255 {
-        search_in_cdb(command, path);
+    if let Some(command) = args.command {
+        if command.len() <= 255 {
+            search_in_cdb(command, path);
+        } else {
+            eprintln!("[FATAL]: <COMMAND> argument's length must be lower than 256");
+            exit(1);
+        }
     } else {
-        eprintln!("[FATAL]: <COMMAND> argument's length must be lower than 256");
-        exit(1);
+        eprintln!("No argument specified, please try with --help");
+        exit(1)
     }
 }
