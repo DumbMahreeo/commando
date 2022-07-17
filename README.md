@@ -51,7 +51,7 @@ searching for `LS` won't give the same results of `ls`*
 
 ## How to install
 
-(AUR support is coming soon)
+(AUR release is coming soon)
 
 As of now, you'll need to compile it yourself with:
 
