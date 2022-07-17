@@ -208,7 +208,7 @@ pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(command: S, path: P) {
         }
         
         #[cfg(not(debug_assertions))]
-        file.seek_relative(4);
+        file.seek_relative(4).unwrap();
 
         increase_address!(4);
 
