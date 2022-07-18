@@ -166,6 +166,7 @@ pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(
             command_name.set_len(command.len())
         }
 
+        #[cfg(debug_assertions)]
         log::debug!("Reading command name at address: {current_address:#X}");
 
         file.read_exact(&mut command_name)?;
