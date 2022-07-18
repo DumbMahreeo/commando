@@ -1,6 +1,6 @@
 [package]
 name = "arch-commando"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/DumbMahreeo/commando"
@@ -16,3 +16,7 @@ reqwest = {version = "0.11.11", features = ["blocking"]}
 [[bin]]
 name = "commando"
 path = "src/main.rs"
+
+[profile.release]
+opt-level = "s"
+strip = true

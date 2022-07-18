@@ -57,7 +57,6 @@ As of now, you'll need to compile it yourself with:
 
 ``` bash
 $ cargo build --release
-$ strip ./target/release/commando
 ```
 
 Then you'll have your binary placed in `./target/release/commando`,
