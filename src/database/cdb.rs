@@ -61,7 +61,7 @@ pub fn create_cdb<P: AsRef<Path>>(mut map_data: HashMap<String, Vec<String>>, pa
     }
 }
 
-pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(command: S, path: P) {
+pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(command: S, path: P, verbose: bool) {
     let command = command.as_ref();
 
     macro_rules! read_unwrap {
@@ -217,7 +217,25 @@ pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(command: S, path: P) {
         let mut stdout = stdout();
         read_unwrap!(file.read_until(0x03, &mut packages), "reading package_name(s)");
 
-        stdout.write_all(&packages).unwrap();
+        let mut packages = packages.as_slice();
+
+        if packages.ends_with(&[0x03]) {
+            packages = &packages[..packages.len()-1];
+        }
+
+        if verbose {
+            print!("Found command `{command}` in the following packages:");
+            let packages = packages.split(|e| e == &b'\n');
+            for package in packages {
+                if !package.is_empty() || package == b"\n" {
+                    stdout.write_all(b"\n\n\t").unwrap();
+                    stdout.write_all(package).unwrap();
+                }
+            }
+            stdout.write_all(b"\n").unwrap();
+        } else {
+            stdout.write_all(&packages).unwrap();
+        }
 
         stdout.flush().unwrap();
 

@@ -11,6 +11,9 @@ pub struct Args {
     #[clap(short, long, value_parser, help="Create or update the database")]
     pub update: bool,
 
+    #[clap(short, long, value_parser, help="Print verbose output to stdout")]
+    pub verbose: bool,
+
     #[clap(short, long, value_parser, help="The path of the database file to create/update or search in")]
     pub path: Option<PathBuf>,
 }

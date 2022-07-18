@@ -47,26 +47,37 @@ fn main() {
         exit(1);
     }
 
+    let verbose = args.verbose;
+
     if args.update {
-        println!("Downloading pacman files database");
+        if verbose {
+            println!("Downloading pacman files database");
+        }
 
         let pacman_db = download_pacman_db(parse_pacman_conf());
 
-        println!("Download completed\nReading database data");
+        if verbose {
+            println!("Download completed\nReading database data");
+        }
 
         let data = parse_alpm_db(extract_alpm_db(pacman_db));
 
-        println!("Writing data to commando database");
+        if verbose {
+            println!("Writing data to commando database");
+        }
 
         create_cdb(data, path);
 
-        println!("All done");
+        if verbose {
+            println!("All done");
+        }
+
         exit(0);
     }
 
     if let Some(command) = args.command {
         if command.len() <= 255 {
-            search_in_cdb(command, path);
+            search_in_cdb(command, path, verbose);
         } else {
             eprintln!("[FATAL]: <COMMAND> argument's length must be lower than 256");
             exit(1);
