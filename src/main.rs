@@ -1,4 +1,4 @@
-use std::{env, fs::create_dir_all, path::Path, process::exit};
+use std::{env, path::Path, process::exit, fs::create_dir_all};
 
 use argparser::Args;
 use clap::Parser;
@@ -15,7 +15,7 @@ mod pacutils;
 fn main() {
     let args = Args::parse();
 
-    let mut path = args.path.unwrap_or_else(|| {
+    let path = args.path.unwrap_or_else(|| {
         let home = match env::var("HOME") {
             Ok(h) if h.is_empty() => {
                 eprintln!("[FATAL]: please ensure that your HOME environment variable is properly set and valid UTF-8 text.\nError details: HOME env var is empty");
@@ -32,33 +32,19 @@ fn main() {
 
 
         let path = Path::new(&home);
-        path.join(".local/share/commando/cdb.db")
+        let path = path.join(".local/share/commando");
+
+        create_dir_all(&path).unwrap_or_else(|e| {
+            eprintln!("[FATAL]: couldn't create database directory at path '{}'.\nError details: {e}", path.display());
+            exit(1);
+        });
+
+        path.join("cdb.db")
     });
 
-    if path.ends_with("/") {
-        if !path.exists() {
-            if let Err(e) = create_dir_all(&path) {
-                eprintln!(
-                    "[FATAL]: couldn't create dir '{}'.\nError details: {e}",
-                    path.display()
-                );
-                exit(1);
-            }
-        }
-
-        path = path.join("cdb.db")
-    } else {
-        let path = path.parent().unwrap_or_else(|| Path::new("/"));
-
-        if !path.exists() {
-            if let Err(e) = create_dir_all(&path) {
-                eprintln!(
-                    "[FATAL]: couldn't create dir '{}'.\nError details: {e}",
-                    path.display()
-                );
-                exit(1);
-            }
-        }
+    if path.is_dir() {
+        eprintln!("[FATAL]: path must be a file, not a directory");
+        exit(1);
     }
 
     if args.update {
@@ -90,3 +76,5 @@ fn main() {
         exit(1)
     }
 }
+
+// @todo: Add decent docstrings
