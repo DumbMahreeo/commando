@@ -1,9 +1,4 @@
-use std::{
-    io::Read,
-    process::{exit, Command},
-    str::FromStr,
-    thread::spawn,
-};
+use std::{io::Read, process::Command, str::FromStr, thread::spawn};
 
 use lazy_regex::Regex;
 use reqwest::Url;
