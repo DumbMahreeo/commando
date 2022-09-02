@@ -61,3 +61,6 @@ $ cargo build --release
 
 Then you'll have your binary placed in `./target/release/commando`,
 simply move it to somewhere in your `$PATH`.
+
+## Credits
+Thanks to [BRA1L0R](https://github.com/BRA1L0R) for the refactor
