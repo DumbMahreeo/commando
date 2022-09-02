@@ -1,4 +1,9 @@
-use std::{env, path::Path, process::exit, fs::create_dir_all};
+use std::{
+    env,
+    fs::create_dir_all,
+    path::{Path, PathBuf},
+    process::exit,
+};
 
 use argparser::Args;
 use clap::Parser;
@@ -6,85 +11,93 @@ use database::{
     alpm::{extract_alpm_db, parse_alpm_db},
     cdb::{create_cdb, search_in_cdb},
 };
+use error::CommandoError;
+use log::LevelFilter;
 use pacutils::{download_pacman_db, parse_pacman_conf};
 
 mod argparser;
 mod database;
+mod error;
 mod pacutils;
+mod colors;
 
 fn main() {
+    if let Err(err) = run() {
+        log::error!("{err}");
+        exit(1)
+    }
+}
+
+fn get_home_path() -> Result<PathBuf, CommandoError> {
+    let home = env::var("HOME");
+    let home = match home.as_deref() {
+        Err(_) | Ok("") => Err(CommandoError::EmptyHome),
+        Ok(home) => Ok(home),
+    }?;
+
+    let path = Path::new(home).join(".local/share/commando");
+
+    create_dir_all(&path).map_err(CommandoError::CreateDatabase)?;
+    Ok(path.join("cdb.db"))
+}
+
+fn run() -> Result<(), CommandoError> {
     let args = Args::parse();
+    env_logger::Builder::new()
+        .format_timestamp(None)
+        .filter_level(
+            args.debug
+                .then_some(LevelFilter::Debug)
+                .unwrap_or(LevelFilter::Info),
+        )
+        .init();
 
-    let path = args.path.unwrap_or_else(|| {
-        let home = match env::var("HOME") {
-            Ok(h) if h.is_empty() => {
-                eprintln!("[FATAL]: please ensure that your HOME environment variable is properly set and valid UTF-8 text.\nError details: HOME env var is empty");
-                exit(1);
-            }
-
-            Err(e) => {
-                eprintln!("[FATAL]: please ensure that your HOME environment variable is properly set and valid UTF-8 text.\nError details: {e}");
-                exit(1);
-            }
-
-            Ok(h) => h,
-        };
-
-
-        let path = Path::new(&home);
-        let path = path.join(".local/share/commando");
-
-        create_dir_all(&path).unwrap_or_else(|e| {
-            eprintln!("[FATAL]: couldn't create database directory at path '{}'.\nError details: {e}", path.display());
-            exit(1);
-        });
-
-        path.join("cdb.db")
-    });
+    let path = match args.path {
+        Some(path) => path,
+        None => get_home_path()?,
+    };
 
     if path.is_dir() {
-        eprintln!("[FATAL]: path must be a file, not a directory");
-        exit(1);
+        return Err(CommandoError::PathIsDir);
     }
 
-    let verbose = args.verbose;
-
     if args.update {
-        if verbose {
+        // @todo: Use proper structs instead of tuples
+
+        log::debug!("Downloading pacman files database");
+        if args.verbose && !args.debug {
             println!("Downloading pacman files database");
         }
 
-        let pacman_db = download_pacman_db(parse_pacman_conf());
+        let pacman_db = download_pacman_db(parse_pacman_conf()?)?;
 
-        if verbose {
-            println!("Download completed\nReading database data");
+        log::debug!("Download completed. Reading database data");
+        if args.verbose && !args.debug {
+            println!("Downloading completed. Reading database data");
         }
 
-        let data = parse_alpm_db(extract_alpm_db(pacman_db));
+        log::debug!("Extracting and parsing alpm db data");
+        let data = parse_alpm_db(extract_alpm_db(pacman_db)?)?;
 
-        if verbose {
-            println!("Writing data to commando database");
+        log::debug!("Writing data to commando database");
+        if args.verbose && !args.debug {
+            println!("Downloading completed. Reading database data");
         }
 
-        create_cdb(data, path);
+        create_cdb(data, path)?;
 
-        if verbose {
+        log::debug!("CDB file created. Update completed");
+        if args.verbose && !args.debug {
             println!("All done");
         }
 
-        exit(0);
+        return Ok(());
     }
 
-    if let Some(command) = args.command {
-        if command.len() <= 255 {
-            search_in_cdb(command, path, verbose);
-        } else {
-            eprintln!("[FATAL]: <COMMAND> argument's length must be lower than 256");
-            exit(1);
-        }
-    } else {
-        eprintln!("No argument specified, please try with --help");
-        exit(1)
+    match args.command {
+        Some(command) if command.len() <= 255 => search_in_cdb(command, path, args.verbose),
+        Some(_) => Err(CommandoError::TooLong),
+        None => Err(CommandoError::NoArgument),
     }
 }
 

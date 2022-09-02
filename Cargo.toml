@@ -1,6 +1,6 @@
 [package]
 name = "arch-commando"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/DumbMahreeo/commando"
@@ -12,6 +12,9 @@ clap = { version = "3.2.12", features = ["derive"] }
 compress-tools = "0.12.3"
 lazy-regex = "2.3.0"
 reqwest = {version = "0.11.11", features = ["blocking"]}
+log = "0.4"
+env_logger = "0.9"
+thiserror = "1"
 
 [[bin]]
 name = "commando"
@@ -20,3 +23,4 @@ path = "src/main.rs"
 [profile.release]
 opt-level = "s"
 strip = true
+lto = true
