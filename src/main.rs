@@ -19,6 +19,7 @@ mod argparser;
 mod database;
 mod error;
 mod pacutils;
+mod colors;
 
 fn main() {
     if let Err(err) = run() {
@@ -45,7 +46,7 @@ fn run() -> Result<(), CommandoError> {
     env_logger::Builder::new()
         .format_timestamp(None)
         .filter_level(
-            args.verbose
+            args.debug
                 .then_some(LevelFilter::Debug)
                 .unwrap_or(LevelFilter::Info),
         )
@@ -56,26 +57,45 @@ fn run() -> Result<(), CommandoError> {
         None => get_home_path()?,
     };
 
-    (!path.is_dir())
-        .then_some(())
-        .ok_or(CommandoError::PathIsDir)?;
+    if path.is_dir() {
+        return Err(CommandoError::PathIsDir);
+    }
 
     if args.update {
+        // @todo: Use proper structs instead of tuples
+
         log::debug!("Downloading pacman files database");
+        if args.verbose && !args.debug {
+            println!("Downloading pacman files database");
+        }
+
         let pacman_db = download_pacman_db(parse_pacman_conf()?)?;
 
         log::debug!("Download completed. Reading database data");
+        if args.verbose && !args.debug {
+            println!("Downloading completed. Reading database data");
+        }
+
+        log::debug!("Extracting and parsing alpm db data");
         let data = parse_alpm_db(extract_alpm_db(pacman_db)?)?;
 
         log::debug!("Writing data to commando database");
+        if args.verbose && !args.debug {
+            println!("Downloading completed. Reading database data");
+        }
+
         create_cdb(data, path)?;
 
-        log::debug!("All done");
+        log::debug!("CDB file created. Update completed");
+        if args.verbose && !args.debug {
+            println!("All done");
+        }
+
         return Ok(());
     }
 
     match args.command {
-        Some(command) if command.len() <= 255 => search_in_cdb(command, path),
+        Some(command) if command.len() <= 255 => search_in_cdb(command, path, args.verbose),
         Some(_) => Err(CommandoError::TooLong),
         None => Err(CommandoError::NoArgument),
     }

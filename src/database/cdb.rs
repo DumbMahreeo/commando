@@ -8,21 +8,10 @@ use std::{
 
 use byteorder::ReadBytesExt;
 
-use crate::error::CommandoError;
+use crate::{color, error::CommandoError};
 
 const MAGIC: [u8; 8] = [0x7F, 0x43, 0x4F, 0x4D, 0x4D, 0x44, 0x42, 0x7F];
 const CDB_VERSION: u32 = 1;
-
-// macro_rules! write_unwrap {
-//     ($($write:expr),+) => {
-//         $(
-//             if let Err(e) = $write {
-//                 eprintln!("[FATAL] couldn't write to CDB file.\nError details: {e}");
-//                 exit(1);
-//             }
-//         )*
-//     };
-// }
 
 pub fn create_cdb<P: AsRef<Path>>(
     mut map_data: HashMap<String, Vec<String>>,
@@ -70,9 +59,9 @@ pub fn create_cdb<P: AsRef<Path>>(
 pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(
     command: S,
     path: P,
+    verbose: bool,
 ) -> Result<(), CommandoError> {
     let command = command.as_ref();
-    let verbose = false;
 
     let mut file = BufReader::new(File::open(path).map_err(CommandoError::CdbOpen)?);
 
@@ -120,13 +109,24 @@ pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(
         };
     }
 
+    #[inline]
+    fn cmd_not_found(command: &str, verbose: bool) -> ! {
+        if verbose {
+            println!(
+                "{red}Command `{yellow}{command}{red}` not found in commando database{reset}",
+                red = color!(red),
+                yellow = color!(yellow),
+                reset = color!(reset)
+            );
+        }
+
+        exit(127);
+    }
+
     loop {
         let command_length = match file.read_u8() {
             Ok(l) => l,
-            _ => {
-                println!("Command `{}` not found in commando database", command);
-                exit(127);
-            }
+            _ => cmd_not_found(command, verbose),
         };
 
         increase_address!();
@@ -146,8 +146,7 @@ pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(
         }
 
         if command_length > command.len() as u8 {
-            println!("Command `{}` not found in commando database", command);
-            exit(127);
+            cmd_not_found(command, verbose)
         }
 
         if command_length != command.len() as u8 {
@@ -206,7 +205,13 @@ pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(
         }
 
         if verbose {
-            print!("Found command `{command}` in the following packages:");
+            print!(
+                "{green}Found command `{yellow}{command}{green}` in the following packages:{white}",
+                green = color!(green),
+                yellow = color!(yellow),
+                white = color!(white),
+            );
+
             let packages = packages.split(|e| e == &b'\n');
             for package in packages {
                 if !package.is_empty() || package == b"\n" {
@@ -218,6 +223,8 @@ pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(
         } else {
             stdout.write_all(packages)?;
         }
+
+        stdout.write_all(color!(reset).as_bytes())?;
 
         stdout.flush()?;
 
