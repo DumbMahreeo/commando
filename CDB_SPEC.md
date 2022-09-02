@@ -2,11 +2,12 @@
 
 # Version 1
 
-Note: version 0 is *the* unstable version, and it gets used for every unstable/development version.
+Note: version 0 is *the* unstable version, and it gets used for every
+unstable/development version.
 
 ## Types
 
-Values starting with `0x` are to be read as a hexadecimal number.
+Values starting with `0x` are to be read as a hexadecimal numbers.
 
 | Type        | Description                                                                                                                                                  |
 |-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -29,7 +30,7 @@ The database format itself.
 | command_name   | String(command_length+1) | The name of the command provided by package_name(s). Length is greater than zero.                                                               | `n` times              |
 | package_length | UInt                     | The sum of the length of every package_name with an added newline. Equivalent to $\sum^{m} (len + 1)$ with `len` being package_name(s') length. | `n` times              |
 | package_name   | String(package_length+1) | The name of a package that provides command_name. Length is greater than zero.                                                                  | `m` times for each `n` |
-| end_package    | Newline                  | The newline that separates the package_name(s).                                                                                                 | `m` times for each `n` |
+| end_package    | Newline                  | The newline that separates the package_name(s).                                                                                                 | `1` time for each `m`  |
 | end_command    | ETX                      | An `ETX` character signaling the end of this command_name's section.                                                                            | `n` times              |
 
 Repeatable fields always follow the same order.
