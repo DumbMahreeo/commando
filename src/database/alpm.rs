@@ -4,6 +4,7 @@ use std::{
     thread::{self, JoinHandle},
 };
 
+use bytes::Bytes;
 use compress_tools::{ArchiveContents, ArchiveIterator};
 use lazy_regex::regex;
 
@@ -12,7 +13,7 @@ use crate::error::CommandoError;
 use super::cdb::CDBEntry;
 
 /// Raw alpm database bytes
-pub type RawAlpmDB = Vec<u8>;
+pub type RawAlpmDB = Bytes;
 
 /// The representation of an extracted directory from an alpm database for a single package
 pub struct PackageDir {
@@ -43,7 +44,7 @@ pub fn extract_alpm_db(data: Vec<RawAlpmDB>) -> Result<Vec<PackageDir>, Commando
             for content in archive {
                 // use ArchiveContents::*;
                 match content {
-                    ArchiveContents::Err(e) => return Err(CommandoError::CorruptedAlpm(e)),
+                    ArchiveContents::Err(e) => return Err(CommandoError::ReadCorruptedAlpm(e)),
                     ArchiveContents::StartOfEntry(s) => start_of_entry = s,
                     ArchiveContents::DataChunk(data) => {
                         if let Ok(data) = String::from_utf8(data) {

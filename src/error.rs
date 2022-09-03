@@ -31,8 +31,11 @@ pub enum CommandoError {
     #[error("Couldn't extract data from alpm database: {0}")]
     AlpmExtract(compress_tools::Error),
 
-    #[error("Corrupted alpm database: {0}")]
-    CorruptedAlpm(compress_tools::Error),
+    #[error("Cannot read corrupted alpm database: {0}")]
+    ReadCorruptedAlpm(compress_tools::Error),
+
+    #[error("Received corrupted alpm database: {0}")]
+    ReceivedCorruptedAlpm(reqwest::Error),
 
     #[error("No argument specified, please try with --help")]
     NoArgument,

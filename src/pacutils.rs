@@ -1,4 +1,4 @@
-use std::{io::Read, process::Command, str::FromStr, thread::spawn};
+use std::{process::Command, str::FromStr};
 
 use lazy_regex::Regex;
 use reqwest::Url;
@@ -42,14 +42,19 @@ pub fn parse_pacman_conf() -> Result<Vec<Repo>, CommandoError> {
 }
 
 /// Returns a vector of vectors of raw database data.
-/// `Vec<Vec<u8>> = Vec<AlpmFileDatabase>`
 pub fn download_pacman_db(repos: Vec<Repo>) -> Result<Vec<RawAlpmDB>, CommandoError> {
-    let mut handles = Vec::with_capacity(repos.len());
-    for mut repo in repos {
-        handles.push(spawn(move || {
-            repo.name.push_str(".files");
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mut data = Vec::with_capacity(repos.len());
 
-            for mut mirror in repo.mirrors {
+        let mut repos = repos.into_iter();
+        let client = reqwest::Client::new();
+
+        'repo: while let Some(mut repo) = repos.next() {
+            repo.name.push_str(".files");
+            let mut mirrors = repo.mirrors.into_iter();
+
+            while let Some(mut mirror) = mirrors.next() {
                 mirror.push('/'); // might be omittable (Url::from_str can work without)
 
                 // let mut name = repo.0.clone();
@@ -57,8 +62,8 @@ pub fn download_pacman_db(repos: Vec<Repo>) -> Result<Vec<RawAlpmDB>, CommandoEr
                 let mut mirror_url = Url::from_str(&mirror).unwrap();
                 mirror_url = mirror_url.join(&repo.name).unwrap();
 
-                let mut res =
-                    match reqwest::blocking::get(mirror_url).map(|res| res.error_for_status()) {
+                let res =
+                    match client.get(mirror_url).send().await.map(|res| res.error_for_status()) {
                         Ok(Ok(res)) => res,
                         Ok(Err(e)) | Err(e) => {
                             log::warn!("Mirror {mirror} timed out: {e}. Trying next mirror");
@@ -66,18 +71,14 @@ pub fn download_pacman_db(repos: Vec<Repo>) -> Result<Vec<RawAlpmDB>, CommandoEr
                         }
                     };
 
-                let mut buf = Vec::new();
-                res.read_to_end(&mut buf).unwrap();
+                data.push(res.bytes().await.map_err(|e| CommandoError::ReceivedCorruptedAlpm(e))?);
 
-                return Ok(buf);
+                continue 'repo
             }
 
-            Err(CommandoError::NoMirror { repo: repo.name })
-        }));
-    }
+            return Err(CommandoError::NoMirror { repo: repo.name });
+        }
 
-    handles
-        .into_iter()
-        .map(|handle| handle.join().unwrap())
-        .collect::<Result<_, _>>()
+        Ok(data)
+    })
 }
