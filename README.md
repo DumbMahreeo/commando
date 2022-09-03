@@ -12,7 +12,7 @@ not found" exception in a shell.
 
 ### Database creation/update
 
-Right after installing it create your database with:
+Right after installing it, create your database with:
 
 ``` bash
 $ commando -u
@@ -33,8 +33,8 @@ Just search your command with:
 $ commando command-name
 ```
 
-For example, if I wanted to see which packages provide the `ls` command,
-I'd just do:
+For example, if I'd want to see which packages provide the `ls` command,
+I would just do:
 
 ``` bash
 $ commando ls
@@ -47,7 +47,7 @@ $ commando --help
 ```
 
 *Note: command search is case sensitive, this means that, for example,
-searching for `LS` won't give the same results of `ls`*
+searching for `LS` won't give the same results as `ls`*
 
 ## How to install
 
@@ -55,7 +55,7 @@ searching for `LS` won't give the same results of `ls`*
 (AUR release is coming soon)
 
 ### Cargo
-If you have cargo installed and your PATH is set up properly you can use
+If you have cargo installed and your `$PATH` is set up properly you can use
 
 ``` bash
 $ cargo install arch-commando
@@ -75,4 +75,4 @@ Then you'll have your binary placed in `./target/release/commando`,
 simply move it to somewhere in your `$PATH`.
 
 ## Credits
-Thanks to [BRA1L0R](https://github.com/BRA1L0R) for the refactor
+Thanks to [BRA1L0R](https://github.com/BRA1L0R) for the refactor.
