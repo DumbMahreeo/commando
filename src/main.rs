@@ -62,7 +62,6 @@ fn run() -> Result<(), CommandoError> {
     }
 
     if args.update {
-        // @todo: Use proper structs instead of tuples
 
         log::debug!("Downloading pacman files database");
         if args.verbose && !args.debug {
@@ -101,4 +100,3 @@ fn run() -> Result<(), CommandoError> {
     }
 }
 
-// @todo: Add decent docstrings

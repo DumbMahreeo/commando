@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     fs::File,
     io::{stdout, BufRead, BufReader, Read, Write},
     path::Path,
@@ -13,18 +12,18 @@ use crate::{color, error::CommandoError};
 const MAGIC: [u8; 8] = [0x7F, 0x43, 0x4F, 0x4D, 0x4D, 0x44, 0x42, 0x7F];
 const CDB_VERSION: u32 = 1;
 
-pub fn create_cdb<P: AsRef<Path>>(
-    mut map_data: HashMap<String, Vec<String>>,
-    path: P,
-) -> Result<(), CommandoError> {
-    let mut data = Vec::with_capacity(map_data.len());
+/// A single entry to be written inside a CDB file
+pub struct CDBEntry {
+    /// Binary name
+    pub command: String,
 
-    for (command, bins) in map_data.iter_mut() {
-        bins.sort_unstable();
-        data.push((command, bins));
-    }
+    /// List of package names that provide `Self.command`
+    pub packages: Vec<String>,
+}
 
-    data.sort_unstable_by_key(|(k, _)| k.len());
+/// Sorts and writes vector of CDBEntry to a CDB file
+pub fn create_cdb<P: AsRef<Path>>(mut data: Vec<CDBEntry>, path: P) -> Result<(), CommandoError> {
+    data.sort_unstable_by_key(|entry| entry.command.len());
 
     let path = path.as_ref();
     let mut file = File::create(path)
@@ -34,13 +33,13 @@ pub fn create_cdb<P: AsRef<Path>>(
     file.write_all(&CDB_VERSION.to_le_bytes())?; // Write version_number
     file.sync_all()?; // Sync
 
-    for (command, packages) in data {
-        // write_unwrap!(
+    for entry in data {
+        let command = &entry.command;
         file.write_all(&[command.len().clamp(0, u8::MAX as usize) as u8])?; // Write command_length
         file.write_all(command.get(..255).unwrap_or(command).as_bytes())?; // Write command_name
                                                                            // );
 
-        let mut package = packages.join("\n");
+        let mut package = entry.packages.join("\n");
         package.push('\n');
 
         if let Some(e) = package.get(..(u32::MAX - 1) as usize) {
@@ -56,6 +55,7 @@ pub fn create_cdb<P: AsRef<Path>>(
     Ok(())
 }
 
+/// Search for command in CDB file
 pub fn search_in_cdb<S: AsRef<str>, P: AsRef<Path>>(
     command: S,
     path: P,

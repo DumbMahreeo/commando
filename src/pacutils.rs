@@ -3,9 +3,16 @@ use std::{io::Read, process::Command, str::FromStr, thread::spawn};
 use lazy_regex::Regex;
 use reqwest::Url;
 
-use crate::error::CommandoError;
+use crate::{database::alpm::RawAlpmDB, error::CommandoError};
 
-pub fn parse_pacman_conf() -> Result<Vec<(String, Vec<String>)>, CommandoError> {
+/// Arch repo with name and mirrorlist
+pub struct Repo {
+    name: String,
+    mirrors: Vec<String>,
+}
+
+/// Parse pacman-conf command's output
+pub fn parse_pacman_conf() -> Result<Vec<Repo>, CommandoError> {
     let output = Command::new("pacman-conf")
         .output()
         .map_err(CommandoError::NoPacmanConf)?;
@@ -24,7 +31,10 @@ pub fn parse_pacman_conf() -> Result<Vec<(String, Vec<String>)>, CommandoError> 
                 .map(|mirror| mirror[1].to_string())
                 .collect();
 
-            (name.to_string(), mirrors)
+            Repo {
+                name: name.into(),
+                mirrors,
+            }
         })
         .collect();
 
@@ -33,21 +43,19 @@ pub fn parse_pacman_conf() -> Result<Vec<(String, Vec<String>)>, CommandoError> 
 
 /// Returns a vector of vectors of raw database data.
 /// `Vec<Vec<u8>> = Vec<AlpmFileDatabase>`
-pub fn download_pacman_db(
-    repos: Vec<(String, Vec<String>)>,
-) -> Result<Vec<Vec<u8>>, CommandoError> {
+pub fn download_pacman_db(repos: Vec<Repo>) -> Result<Vec<RawAlpmDB>, CommandoError> {
     let mut handles = Vec::with_capacity(repos.len());
-    for (mut name, mirrors) in repos {
+    for mut repo in repos {
         handles.push(spawn(move || {
-            name.push_str(".files");
+            repo.name.push_str(".files");
 
-            for mut mirror in mirrors {
+            for mut mirror in repo.mirrors {
                 mirror.push('/'); // might be omittable (Url::from_str can work without)
 
                 // let mut name = repo.0.clone();
                 // mirror.push('/');
                 let mut mirror_url = Url::from_str(&mirror).unwrap();
-                mirror_url = mirror_url.join(&name).unwrap();
+                mirror_url = mirror_url.join(&repo.name).unwrap();
 
                 let mut res =
                     match reqwest::blocking::get(mirror_url).map(|res| res.error_for_status()) {
@@ -64,20 +72,9 @@ pub fn download_pacman_db(
                 return Ok(buf);
             }
 
-            Err(CommandoError::NoMirror { repo: name })
+            Err(CommandoError::NoMirror { repo: repo.name })
         }));
     }
-
-    // let mut data = Vec::with_capacity(handles.len());
-    // for handle in handles {
-    //     data.push(match handle.join() {
-    //         Ok(v) => v,
-    //         Err(_) => {
-    //             eprintln!("[FATAL]: thread errored");
-    //             exit(1);
-    //         }
-    //     });
-    // }
 
     handles
         .into_iter()

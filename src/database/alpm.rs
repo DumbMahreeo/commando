@@ -9,8 +9,22 @@ use lazy_regex::regex;
 
 use crate::error::CommandoError;
 
-/// Extracts libalpm file database into Vec<(desc: String, files: String)>
-pub fn extract_alpm_db(data: Vec<Vec<u8>>) -> Result<Vec<(String, String)>, CommandoError> {
+use super::cdb::CDBEntry;
+
+/// Raw alpm database bytes
+pub type RawAlpmDB = Vec<u8>;
+
+/// The representation of an extracted directory from an alpm database for a single package
+pub struct PackageDir {
+    /// The 'desc' file
+    desc: String,
+
+    /// The 'files' file
+    files: String,
+}
+
+/// Extracts libalpm file database into a vector of packages
+pub fn extract_alpm_db(data: Vec<RawAlpmDB>) -> Result<Vec<PackageDir>, CommandoError> {
     let mut handles = Vec::with_capacity(3);
 
     for file in data {
@@ -45,7 +59,7 @@ pub fn extract_alpm_db(data: Vec<Vec<u8>>) -> Result<Vec<(String, String)>, Comm
                             // if let Ok(mut extracted_data) = extracted_data.lock() {
                             //     extracted_data.as_mut().unwrap().push((desc, files));
                             // }
-                            extracted_data.push((desc, files));
+                            extracted_data.push(PackageDir { desc, files });
 
                             desc = String::new();
                             files = String::new();
@@ -66,6 +80,7 @@ pub fn extract_alpm_db(data: Vec<Vec<u8>>) -> Result<Vec<(String, String)>, Comm
     Ok(results.into_iter().flatten().collect())
 }
 
+/// Read package name from 'desc' file
 fn read_package_name<S: AsRef<str>>(desc: S) -> Result<String, CommandoError> {
     let mut desc = desc.as_ref().split('\n');
 
@@ -84,6 +99,7 @@ fn read_package_name<S: AsRef<str>>(desc: S) -> Result<String, CommandoError> {
     Err(CommandoError::PackageNameDescFind)
 }
 
+/// Read package binaries from 'files' file
 fn read_package_bins<S: AsRef<str>>(files: S) -> Vec<String> {
     let files = files.as_ref();
 
@@ -100,16 +116,13 @@ fn read_package_bins<S: AsRef<str>>(files: S) -> Vec<String> {
     commands
 }
 
-/// Reads raw data from extract_alpm_db and returns
-/// `Vec<(Package name: String, Bin list: Vec<String>)`
-pub fn parse_alpm_db(
-    data: Vec<(String, String)>,
-) -> Result<HashMap<String, Vec<String>>, CommandoError> {
+/// Reads data from PackageDir and returns a list of CDB entries
+pub fn parse_alpm_db(data: Vec<PackageDir>) -> Result<Vec<CDBEntry>, CommandoError> {
     let mut parsed_data: HashMap<String, Vec<String>> = HashMap::new();
-    for (desc, files) in data {
-        let bins = read_package_bins(files);
+    for package in data {
+        let bins = read_package_bins(package.files);
         if !bins.is_empty() {
-            let package_name = read_package_name(desc)?;
+            let package_name = read_package_name(package.desc)?;
 
             for bin in bins {
                 match parsed_data.get_mut(&bin) {
@@ -122,5 +135,11 @@ pub fn parse_alpm_db(
         }
     }
 
-    Ok(parsed_data)
+    let mut entries = Vec::with_capacity(parsed_data.len());
+
+    for (command, packages) in parsed_data {
+        entries.push(CDBEntry { command, packages })
+    }
+
+    Ok(entries)
 }
