@@ -51,9 +51,21 @@ searching for `LS` won't give the same results of `ls`*
 
 ## How to install
 
+### AUR
 (AUR release is coming soon)
 
-As of now, you'll need to compile it yourself with:
+### Cargo
+If you have cargo installed and your PATH is set up properly you can use
+
+``` bash
+$ cargo install arch-commando
+```
+
+to download, build and install `commando`
+
+### Building
+
+You can compile it by cloning this repo and then executing:
 
 ``` bash
 $ cargo build --release
