@@ -1,5 +1,7 @@
-use std::{process::Command, str::FromStr};
+use std::{process::Command, str::FromStr, rc::Rc, mem::take};
 
+use bytes::Bytes;
+use futures::{stream::FuturesUnordered, StreamExt, FutureExt};
 use lazy_regex::Regex;
 use reqwest::Url;
 
@@ -42,17 +44,16 @@ pub fn parse_pacman_conf() -> Result<Vec<Repo>, CommandoError> {
 }
 
 /// Returns a vector of vectors of raw database data.
-pub fn download_pacman_db(repos: Vec<Repo>) -> Result<Vec<RawAlpmDB>, CommandoError> {
+pub fn download_pacman_db(mut repos: Vec<Repo>) -> Result<Vec<RawAlpmDB>, CommandoError> {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
-        let mut data = Vec::with_capacity(repos.len());
+        let mut data_vec = Vec::with_capacity(repos.len());
 
-        let mut repos = repos.into_iter();
-        let client = reqwest::Client::new();
-
-        'repo: while let Some(mut repo) = repos.next() {
+        let futs = repos.iter_mut().map(|repo| async move {
             repo.name.push_str(".files");
-            let mut mirrors = repo.mirrors.into_iter();
+
+            let client = reqwest::Client::new();
+            let mut mirrors = take(&mut repo.mirrors).into_iter();
 
             while let Some(mut mirror) = mirrors.next() {
                 mirror.push('/'); // might be omittable (Url::from_str can work without)
@@ -71,14 +72,17 @@ pub fn download_pacman_db(repos: Vec<Repo>) -> Result<Vec<RawAlpmDB>, CommandoEr
                         }
                     };
 
-                data.push(res.bytes().await.map_err(|e| CommandoError::ReceivedCorruptedAlpm(e))?);
-
-                continue 'repo
+                return res.bytes().await.map_err(|e| CommandoError::ReceivedCorruptedAlpm(e));
             }
 
-            return Err(CommandoError::NoMirror { repo: repo.name });
+            Err(CommandoError::NoMirror { repo: repo.name.clone() })
+        }).collect::<FuturesUnordered<_>>()
+        .collect::<Vec<_>>().await;
+
+        for data in futs {
+            data_vec.push(data?)
         }
 
-        Ok(data)
+        Ok(data_vec)
     })
 }
