@@ -14,7 +14,7 @@ not found" exception in a shell.
 
 Right after installing it, create your database with:
 
-``` bash
+```bash
 $ commando -u
 ```
 
@@ -29,20 +29,26 @@ Now you're ready to search with `commando`!
 
 Just search your command with:
 
-``` bash
+```bash
 $ commando command-name
 ```
 
 For example, if I'd want to see which packages provide the `ls` command,
 I would just do:
 
-``` bash
+```bash
 $ commando ls
+```
+
+or using the `-v` flag for nice, verbose output:
+
+```bash
+$ commando -v ls
 ```
 
 For further usage instructions, please execute:
 
-``` bash
+```bash
 $ commando --help
 ```
 
@@ -68,7 +74,7 @@ $ yay -S commando
 ### Cargo
 If you have cargo installed and your `$PATH` is set up properly you can use
 
-``` bash
+```bash
 $ cargo install arch-commando
 ```
 
@@ -78,7 +84,7 @@ to download, build and install `commando`
 
 You can compile it by cloning this repo and then executing:
 
-``` bash
+```bash
 $ cargo build --release
 ```
 
