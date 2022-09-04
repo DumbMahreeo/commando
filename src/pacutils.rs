@@ -1,4 +1,4 @@
-use std::{io::Read, process::Command, str::FromStr, thread::spawn};
+use std::{env::consts::ARCH, io::Read, process::Command, str::FromStr, thread::spawn};
 
 use lazy_regex::Regex;
 use reqwest::Url;
@@ -43,7 +43,20 @@ pub fn parse_pacman_conf() -> Result<Vec<Repo>, CommandoError> {
 
 /// Returns a vector of vectors of raw database data.
 /// `Vec<Vec<u8>> = Vec<AlpmFileDatabase>`
-pub fn download_pacman_db(repos: Vec<Repo>) -> Result<Vec<RawAlpmDB>, CommandoError> {
+pub fn download_pacman_db(
+    mut repos: Vec<Repo>,
+    aur: bool,
+) -> Result<Vec<RawAlpmDB>, CommandoError> {
+    if aur {
+        repos.push(Repo {
+            name: "chaotic-aur".into(),
+            mirrors: vec![
+                format!("https://geo-mirror.chaotic.cx/chaotic-aur/{ARCH}").into(),
+                format!("https://cdn-mirror.chaotic.cx/chaotic-aur/{ARCH}").into(),
+            ],
+        })
+    }
+
     let mut handles = Vec::with_capacity(repos.len());
     for mut repo in repos {
         handles.push(spawn(move || {

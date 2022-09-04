@@ -68,11 +68,11 @@ fn run() -> Result<(), CommandoError> {
             println!("Downloading pacman files database");
         }
 
-        let pacman_db = download_pacman_db(parse_pacman_conf()?)?;
+        let pacman_db = download_pacman_db(parse_pacman_conf()?, args.aur)?;
 
         log::debug!("Download completed. Reading database data");
         if args.verbose && !args.debug {
-            println!("Downloading completed. Reading database data");
+            println!("Download completed. Reading database data");
         }
 
         log::debug!("Extracting and parsing alpm db data");
@@ -80,7 +80,7 @@ fn run() -> Result<(), CommandoError> {
 
         log::debug!("Writing data to commando database");
         if args.verbose && !args.debug {
-            println!("Downloading completed. Reading database data");
+            println!("Writing data to commando database");
         }
 
         create_cdb(data, path)?;
