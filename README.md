@@ -52,7 +52,18 @@ searching for `LS` won't give the same results as `ls`*
 ## How to install
 
 ### AUR
-(AUR release is coming soon)
+You can install commando directly from the Arch User Repository.
+You can find the package here -> https://aur.archlinux.org/packages/commando
+
+Or use any aur helper such as `yay` and `paru` to install it.
+
+```bash
+# With paru
+$ paru -S commando
+
+# With yay
+$ yay -S commando
+```
 
 ### Cargo
 If you have cargo installed and your `$PATH` is set up properly you can use
