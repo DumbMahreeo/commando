@@ -77,18 +77,21 @@ searching for `LS` won't give the same results as `ls`*
 
 You can install commando directly from the Arch User Repository.
 
-You can find the package here:
-<https://aur.archlinux.org/packages/commando>
+You can find the binary package here:
+<https://aur.archlinux.org/packages/commando-bin>
 
 Or use any aur helper such as `paru` and `yay` to install it.
 
 ``` bash
 # With paru
-$ paru -S commando
+$ paru -S commando-bin
 
 # With yay
-$ yay -S commando
+$ yay -S commando-bin
 ```
+
+There is also an AUR package to built commando yourself:
+<https://aur.archlinux.org/packages/commando>
 
 ### Cargo
 
